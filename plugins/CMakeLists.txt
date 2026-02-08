@@ -41,6 +41,7 @@ add_subdirectory(spectrum_clock)
 add_subdirectory(stopwatch)
 add_subdirectory(time_zone)
 add_subdirectory(var_translucency)
+add_subdirectory(lunar_calendar)
 
 if (TARGET Qt6::Multimedia)
     add_subdirectory(chime)
