@@ -9,7 +9,7 @@
 #include <QDialog>
 
 #include "impl/talking_clock_settings.hpp"
-#include "config/settings_storage.hpp"
+#include "config/settings.hpp"
 
 namespace talking_clock {
 
