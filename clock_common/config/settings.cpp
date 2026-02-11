@@ -25,6 +25,7 @@ void SettingsStorageImpl::commit()
   for (const auto& k : std::as_const(_mod_keys))
     _st.commitValue(k);
   _mod_keys.clear();
+  _st.syncStorage();
 }
 
 void SettingsStorageImpl::discard()

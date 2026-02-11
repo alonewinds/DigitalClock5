@@ -21,6 +21,9 @@ public:
 
   virtual void commitValue(const QString& k) = 0;
   virtual void discardValue(const QString& k) = 0;
+
+  // called after batch commit to flush persistent storage (e.g. QSettings::sync())
+  virtual void syncStorage() {}
 };
 
 

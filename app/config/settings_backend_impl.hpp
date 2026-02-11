@@ -25,6 +25,7 @@ public:
 
   void commitValue(const QString& k) override;
   void discardValue(const QString& k) override;
+  void syncStorage() override;
 
   void exportSettings(QVariantHash& s) const;
   void importSettings(const QVariantHash& s);

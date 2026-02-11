@@ -65,3 +65,8 @@ void SettingsBackendImpl::discardAll()
 {
   _runtime_values.clear();
 }
+
+void SettingsBackendImpl::syncStorage()
+{
+  _st.sync();
+}
