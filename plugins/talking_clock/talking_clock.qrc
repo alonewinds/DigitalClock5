@@ -2,5 +2,12 @@
     <qresource prefix="/talking_clock">
         <file alias="icon.svg">res/8725613_alt_message_comment.svg</file>
         <file alias="voice-config.svg">res/8725647_comment_message.svg</file>
+        <file alias="play.svg">res/play.svg</file>
+        <file alias="stop.svg">res/stop.svg</file>
+        <file alias="sound_icon.svg">res/sound_icon.svg</file>
+        <file alias="hour_signal.wav">res/hour_signal.wav</file>
+        <file alias="quarter_signal.wav">res/quarter_signal.wav</file>
+        <file alias="big_ben_strikes_1.mp3">res/bigbenstrikes1.mp3</file>
+        <file alias="quarter_hour_chime_beg.mp3">res/quarterhourchimebeg.mp3</file>
     </qresource>
 </RCC>

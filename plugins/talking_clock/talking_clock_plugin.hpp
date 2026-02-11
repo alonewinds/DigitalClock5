@@ -11,6 +11,7 @@
 #include "impl/talking_clock_settings.hpp"
 
 using talking_clock::TalkingClockPluginConfig;
+class QMediaPlayer;
 class QTextToSpeech;
 
 class TalkingClockPlugin : public ClockPluginInstance
@@ -32,11 +33,18 @@ public slots:
   void initSpeechEngine();
 
 private:
+  bool isQuietTime(const QTime& t) const;
+  void playSound(const QUrl& url, int volume);
+  void onSoundFinished();
+
+private:
   const TalkingClockPluginConfig& _cfg;
 
   std::unique_ptr<QTextToSpeech> _speech;
+  std::unique_ptr<QMediaPlayer> _player;
   bool _playback_allowed = false;
   QTimeZone _time_zone;
+  QString _pending_speech;
 };
 
 
@@ -60,5 +68,6 @@ public slots:
 private:
   size_t _first_idx = 0;
   std::unique_ptr<TalkingClockPluginConfig> _cfg;
+  std::unique_ptr<SettingsStorage> _state;
   std::unique_ptr<TalkingClockPlugin> _inst;
 };
