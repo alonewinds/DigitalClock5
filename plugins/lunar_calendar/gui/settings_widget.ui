@@ -40,7 +40,7 @@
       <item>
        <widget class="QRadioButton" name="full_rbtn">
         <property name="text">
-         <string>Full (丙午年【马】正月十五)</string>
+         <string>Full (丙午马年 正月十五)</string>
         </property>
        </widget>
       </item>

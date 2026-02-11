@@ -49,7 +49,7 @@ class LunarCalendarPluginFactory : public TextPluginBase
   Q_INTERFACES(ClockPlugin)
 
 public:
-  QString name() const override { return tr("Lunar Calendar"); }
+  QString name() const override { return tr("农历"); }
   QString description() const override;
 
 protected:

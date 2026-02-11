@@ -73,11 +73,11 @@ void LunarCalendarPlugin::updateLunarStr()
       break;
 
     case LunarPluginInstanceConfig::Full:
-      // 完整: 丙午年【马】正月十五
-      _lunar_str = LunarCalendar::ganZhiYear(lunar)
-                 + QStringLiteral("【")
+      // 全部: 丙午马年 正月十五
+      _lunar_str = LunarCalendar::ganName(lunar.ganIndex)
+                 + LunarCalendar::zhiName(lunar.zhiIndex)
                  + LunarCalendar::zodiacName(lunar.zodiacIndex)
-                 + QStringLiteral("】")
+                 + QStringLiteral("年 ")
                  + monthDay;
       break;
   }
