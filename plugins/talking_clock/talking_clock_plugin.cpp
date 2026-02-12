@@ -23,6 +23,31 @@ bool is_quiet_time(const QTime &c_time, const QTime &s_time,
          ((QTime(0, 0) <= c_time) && (c_time <= e_time));
 }
 
+// refined Chinese time period based on hour
+QString refined_period(int hour) {
+  if (hour < 6)
+    return QStringLiteral("凌晨");
+  if (hour < 9)
+    return QStringLiteral("早上");
+  if (hour < 12)
+    return QStringLiteral("上午");
+  if (hour < 13)
+    return QStringLiteral("中午");
+  if (hour < 18)
+    return QStringLiteral("下午");
+  return QStringLiteral("晚上");
+}
+
+// replace generic AM/PM with refined time period
+QString refine_time_period(const QString &text, int hour) {
+  QString result = text;
+  result.replace(QStringLiteral("上午"), refined_period(hour));
+  result.replace(QStringLiteral("下午"), refined_period(hour));
+  result.replace(QLatin1String("AM"), refined_period(hour));
+  result.replace(QLatin1String("PM"), refined_period(hour));
+  return result;
+}
+
 } // namespace
 
 TalkingClockPlugin::TalkingClockPlugin(const TalkingClockPluginConfig &cfg)
@@ -86,7 +111,9 @@ void TalkingClockPlugin::update(const QDateTime &dt) {
     if (soundEnabled || speechEnabled) {
       _pending_speech =
           speechEnabled
-              ? _speech->locale().toString(cur_time, _cfg.getEveryHourFormat())
+              ? refine_time_period(_speech->locale().toString(
+                                       cur_time, _cfg.getEveryHourFormat()),
+                                   cur_time.hour())
               : QString();
 
       if (soundEnabled) {
@@ -106,10 +133,12 @@ void TalkingClockPlugin::update(const QDateTime &dt) {
     bool speechEnabled = _cfg.getQuarterHourEnabled();
 
     if (soundEnabled || speechEnabled) {
-      _pending_speech = speechEnabled
-                            ? _speech->locale().toString(
-                                  cur_time, _cfg.getQuarterHourFormat())
-                            : QString();
+      _pending_speech =
+          speechEnabled
+              ? refine_time_period(_speech->locale().toString(
+                                       cur_time, _cfg.getQuarterHourFormat()),
+                                   cur_time.hour())
+              : QString();
 
       if (soundEnabled) {
         playSound(_cfg.getQuarterHourSignal(),
