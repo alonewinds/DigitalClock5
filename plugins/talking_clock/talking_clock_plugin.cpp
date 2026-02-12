@@ -14,8 +14,8 @@
 
 namespace {
 
-bool is_quiet_time(const QTime& c_time, const QTime& s_time, const QTime& e_time)
-{
+bool is_quiet_time(const QTime &c_time, const QTime &s_time,
+                   const QTime &e_time) {
   if (s_time <= e_time)
     return (s_time <= c_time) && (c_time <= e_time);
 
@@ -25,17 +25,14 @@ bool is_quiet_time(const QTime& c_time, const QTime& s_time, const QTime& e_time
 
 } // namespace
 
-TalkingClockPlugin::TalkingClockPlugin(const TalkingClockPluginConfig& cfg)
-  : ClockPluginInstance()
-  , _cfg(cfg)
-{
+TalkingClockPlugin::TalkingClockPlugin(const TalkingClockPluginConfig &cfg)
+    : ClockPluginInstance(), _cfg(cfg) {
   _time_zone = QTimeZone::systemTimeZone();
 }
 
 TalkingClockPlugin::~TalkingClockPlugin() = default;
 
-void TalkingClockPlugin::startup()
-{
+void TalkingClockPlugin::startup() {
   initSpeechEngine();
 
   _player = std::make_unique<QMediaPlayer>();
@@ -43,14 +40,13 @@ void TalkingClockPlugin::startup()
   _player->setAudioOutput(ao);
 
   connect(_player.get(), &QMediaPlayer::playbackStateChanged, this,
-    [this](QMediaPlayer::PlaybackState state) {
-      if (state == QMediaPlayer::StoppedState)
-        onSoundFinished();
-    });
+          [this](QMediaPlayer::PlaybackState state) {
+            if (state == QMediaPlayer::StoppedState)
+              onSoundFinished();
+          });
 }
 
-void TalkingClockPlugin::shutdown()
-{
+void TalkingClockPlugin::shutdown() {
   if (_speech) {
     _speech->stop();
     _speech.reset();
@@ -62,8 +58,7 @@ void TalkingClockPlugin::shutdown()
   }
 }
 
-void TalkingClockPlugin::update(const QDateTime& dt)
-{
+void TalkingClockPlugin::update(const QDateTime &dt) {
   if (!_speech)
     return;
 
@@ -89,9 +84,10 @@ void TalkingClockPlugin::update(const QDateTime& dt)
     bool speechEnabled = _cfg.getEveryHourEnabled();
 
     if (soundEnabled || speechEnabled) {
-      _pending_speech = speechEnabled
-        ? _speech->locale().toString(cur_time, _cfg.getEveryHourFormat())
-        : QString();
+      _pending_speech =
+          speechEnabled
+              ? _speech->locale().toString(cur_time, _cfg.getEveryHourFormat())
+              : QString();
 
       if (soundEnabled) {
         playSound(_cfg.getEveryHourSignal(), _cfg.getEveryHourSoundVolume());
@@ -104,17 +100,20 @@ void TalkingClockPlugin::update(const QDateTime& dt)
   }
 
   // quarter hour trigger
-  if (cur_time.minute() % 15 == 0 && cur_time.minute() != 0 && _playback_allowed) {
+  if (cur_time.minute() % 15 == 0 && cur_time.minute() != 0 &&
+      _playback_allowed) {
     bool soundEnabled = _cfg.getQuarterHourSoundEnabled();
     bool speechEnabled = _cfg.getQuarterHourEnabled();
 
     if (soundEnabled || speechEnabled) {
       _pending_speech = speechEnabled
-        ? _speech->locale().toString(cur_time, _cfg.getQuarterHourFormat())
-        : QString();
+                            ? _speech->locale().toString(
+                                  cur_time, _cfg.getQuarterHourFormat())
+                            : QString();
 
       if (soundEnabled) {
-        playSound(_cfg.getQuarterHourSignal(), _cfg.getQuarterHourSoundVolume());
+        playSound(_cfg.getQuarterHourSignal(),
+                  _cfg.getQuarterHourSoundVolume());
       } else if (speechEnabled) {
         _speech->say(_pending_speech);
         _pending_speech.clear();
@@ -126,10 +125,16 @@ void TalkingClockPlugin::update(const QDateTime& dt)
   _playback_allowed = (cur_time.minute() % 15 != 0);
 }
 
-void TalkingClockPlugin::initSpeechEngine()
-{
+void TalkingClockPlugin::initSpeechEngine() {
+  // safely stop and destroy old engine before creating new one
+  if (_speech) {
+    _speech->stop();
+    _speech.reset();
+  }
+
   QString engine_name = _cfg.getSynthesisEngine();
-  if (engine_name == "default" || !QTextToSpeech::availableEngines().contains(engine_name))
+  if (engine_name == "default" ||
+      !QTextToSpeech::availableEngines().contains(engine_name))
     _speech = std::make_unique<QTextToSpeech>();
   else
     _speech = std::make_unique<QTextToSpeech>(engine_name);
@@ -149,16 +154,16 @@ void TalkingClockPlugin::initSpeechEngine()
     _speech->setVoice(voices.at(voice_index));
 }
 
-bool TalkingClockPlugin::isQuietTime(const QTime& t) const
-{
+bool TalkingClockPlugin::isQuietTime(const QTime &t) const {
   if (_cfg.getQuietHoursEnabled())
-    return is_quiet_time(t, _cfg.getQuietHoursStartTime(), _cfg.getQuietHoursEndTime());
+    return is_quiet_time(t, _cfg.getQuietHoursStartTime(),
+                         _cfg.getQuietHoursEndTime());
   return false;
 }
 
-void TalkingClockPlugin::playSound(const QUrl& url, int volume)
-{
-  if (!_player) return;
+void TalkingClockPlugin::playSound(const QUrl &url, int volume) {
+  if (!_player)
+    return;
   _player->setSource(QUrl());
   _player->setLoops(1);
   _player->setSource(url);
@@ -166,30 +171,25 @@ void TalkingClockPlugin::playSound(const QUrl& url, int volume)
   _player->play();
 }
 
-void TalkingClockPlugin::onSoundFinished()
-{
+void TalkingClockPlugin::onSoundFinished() {
   if (!_pending_speech.isEmpty() && _speech) {
     _speech->say(_pending_speech);
     _pending_speech.clear();
   }
 }
 
-
-void TalkingClockPluginFactory::init(Context&& ctx)
-{
+void TalkingClockPluginFactory::init(Context &&ctx) {
   Q_ASSERT(!ctx.active_instances.empty());
   _first_idx = ctx.active_instances.front();
   _cfg = std::make_unique<TalkingClockPluginConfig>(std::move(ctx.settings));
   _state = std::move(ctx.state);
 }
 
-QString TalkingClockPluginFactory::description() const
-{
+QString TalkingClockPluginFactory::description() const {
   return tr("Announces time with selected period.");
 }
 
-ClockPluginInstance* TalkingClockPluginFactory::instance(size_t idx)
-{
+ClockPluginInstance *TalkingClockPluginFactory::instance(size_t idx) {
   if (idx != _first_idx)
     return nullptr;
 
@@ -199,19 +199,22 @@ ClockPluginInstance* TalkingClockPluginFactory::instance(size_t idx)
   return _inst.get();
 }
 
-void TalkingClockPluginFactory::configure(QWidget* parent, size_t idx)
-{
+void TalkingClockPluginFactory::configure(QWidget *parent, size_t idx) {
   Q_UNUSED(idx);
   using talking_clock::SettingsDialog;
   auto tz = _inst ? _inst->tz() : QTimeZone::systemTimeZone();
   auto d = new SettingsDialog(*_cfg, *_state, tz, parent);
 
-  connect(d, &SettingsDialog::accepted, _cfg.get(), &TalkingClockPluginConfig::commit);
-  connect(d, &SettingsDialog::rejected, _cfg.get(), &TalkingClockPluginConfig::discard);
+  connect(d, &SettingsDialog::accepted, _cfg.get(),
+          &TalkingClockPluginConfig::commit);
+  connect(d, &SettingsDialog::rejected, _cfg.get(),
+          &TalkingClockPluginConfig::discard);
 
   if (_inst) {
-    connect(d, &SettingsDialog::accepted, _inst.get(), &TalkingClockPlugin::initSpeechEngine);
-    connect(d, &SettingsDialog::rejected, _inst.get(), &TalkingClockPlugin::initSpeechEngine);
+    connect(d, &SettingsDialog::accepted, _inst.get(),
+            &TalkingClockPlugin::initSpeechEngine);
+    connect(d, &SettingsDialog::rejected, _inst.get(),
+            &TalkingClockPlugin::initSpeechEngine);
   }
 
   connect(d, &SettingsDialog::finished, d, &QObject::deleteLater);

@@ -16,8 +16,7 @@
 
 namespace talking_clock {
 
-class TalkingClockPluginConfig : public QObject, public ConfigBase
-{
+class TalkingClockPluginConfig : public QObject, public ConfigBase {
   Q_OBJECT
 
 public:
@@ -25,25 +24,31 @@ public:
 
   // hourly announcement - sound
   CONFIG_OPTION(EveryHourSoundEnabled, "every_hour/sound_enabled", bool, false)
-  CONFIG_OPTION(EveryHourSignal, "every_hour/signal", QUrl, QUrl("qrc:/talking_clock/hour_signal.wav"))
+  CONFIG_OPTION(EveryHourSignal, "every_hour/signal", QUrl,
+                QUrl("qrc:/talking_clock/hour_signal.wav"))
   CONFIG_OPTION(EveryHourSoundVolume, "every_hour/sound_volume", int, 90)
 
   // hourly announcement - speech
   CONFIG_OPTION(EveryHourEnabled, "every_hour/enabled", bool, true)
-  CONFIG_OPTION(EveryHourFormat, "every_hour/format", QString, QString("'It''s' ha 'o''clock'"))
+  CONFIG_OPTION(EveryHourFormat, "every_hour/format", QString,
+                QString("'当前时间'H'点整'"))
 
   // quarter hour announcement - sound
-  CONFIG_OPTION(QuarterHourSoundEnabled, "quarter_hour/sound_enabled", bool, false)
-  CONFIG_OPTION(QuarterHourSignal, "quarter_hour/signal", QUrl, QUrl("qrc:/talking_clock/quarter_signal.wav"))
+  CONFIG_OPTION(QuarterHourSoundEnabled, "quarter_hour/sound_enabled", bool,
+                false)
+  CONFIG_OPTION(QuarterHourSignal, "quarter_hour/signal", QUrl,
+                QUrl("qrc:/talking_clock/quarter_signal.wav"))
   CONFIG_OPTION(QuarterHourSoundVolume, "quarter_hour/sound_volume", int, 90)
 
   // quarter hour announcement - speech
   CONFIG_OPTION(QuarterHourEnabled, "quarter_hour/enabled", bool, false)
-  CONFIG_OPTION(QuarterHourFormat, "quarter_hour/format", QString, QString("h:m ap"))
+  CONFIG_OPTION(QuarterHourFormat, "quarter_hour/format", QString,
+                QString("'当前时间'H'点'm'分'"))
 
   // quiet hours
   CONFIG_OPTION(QuietHoursEnabled, "quiet_hours/enabled", bool, false)
-  CONFIG_OPTION(QuietHoursStartTime, "quiet_hours/start_time", QTime, QTime(23, 1))
+  CONFIG_OPTION(QuietHoursStartTime, "quiet_hours/start_time", QTime,
+                QTime(23, 1))
   CONFIG_OPTION(QuietHoursEndTime, "quiet_hours/end_time", QTime, QTime(6, 59))
 
   // voice synthesis
@@ -51,7 +56,8 @@ public:
 
   CONFIG_OPTION(SynthesisRate, "synthesis/rate", int, 0)
   CONFIG_OPTION(SynthesisPitch, "synthesis/pitch", int, 0)
-  CONFIG_OPTION(SynthesisEngine, "synthesis/engine", QString, QString("default"))
+  CONFIG_OPTION(SynthesisEngine, "synthesis/engine", QString,
+                QString("default"))
   CONFIG_OPTION(SynthesisLanguage, "synthesis/language", int, -1)
   CONFIG_OPTION(SynthesisVoice, "synthesis/voice", int, -1)
 
