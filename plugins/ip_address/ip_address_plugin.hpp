@@ -14,12 +14,11 @@ class QNetworkReply;
 
 using plugin::ip::IpAddressPluginInstanceConfig;
 
-class IpAddressPlugin : public plugin::text::TextPluginInstanceBase
-{
+class IpAddressPlugin : public plugin::text::TextPluginInstanceBase {
   Q_OBJECT
 
 public:
-  IpAddressPlugin(const IpAddressPluginInstanceConfig* cfg);
+  IpAddressPlugin(const IpAddressPluginInstanceConfig *cfg);
 
 public slots:
   void startup() override;
@@ -28,7 +27,11 @@ public slots:
   void UpdateIPsList();
 
 protected:
-  QString text() const override { return _last_ip_list.join('\n'); }
+  QString text() const override {
+    if (_cfg->getDisplayInline())
+      return _last_ip_list.join(QString(_cfg->getInlineSpacing(), ' '));
+    return _last_ip_list.join('\n');
+  }
 
   void pluginReloadConfig() override;
 
@@ -36,17 +39,15 @@ private:
   void requestExternalAddress(bool ipv6 = false);
 
 private:
-  const IpAddressPluginInstanceConfig* _cfg;
-  QTimer* _ip_update_timer = nullptr;
+  const IpAddressPluginInstanceConfig *_cfg;
+  QTimer *_ip_update_timer = nullptr;
   QStringList _last_ip_list;
-  QNetworkAccessManager* _qnam = nullptr;
+  QNetworkAccessManager *_qnam = nullptr;
   bool _getting_external_ip4 = false;
   bool _getting_external_ip6 = false;
 };
 
-
-class IpAddressPluginFactory : public plugin::text::TextPluginBase
-{
+class IpAddressPluginFactory : public plugin::text::TextPluginBase {
   Q_OBJECT
   Q_PLUGIN_METADATA(IID ClockPlugin_IId FILE "ip_address.json")
   Q_INTERFACES(ClockPlugin)
@@ -56,19 +57,18 @@ public:
   QString description() const override;
 
 protected:
-  Instance createInstance(size_t idx) const override
-  {
-    auto cfg = qobject_cast<IpAddressPluginInstanceConfig*>(instanceConfig(idx));
+  Instance createInstance(size_t idx) const override {
+    auto cfg =
+        qobject_cast<IpAddressPluginInstanceConfig *>(instanceConfig(idx));
     Q_ASSERT(cfg);
     return std::make_unique<IpAddressPlugin>(cfg);
   }
 
-  std::unique_ptr<plugin::text::PluginConfig> createConfig(
-    std::unique_ptr<PluginSettingsBackend> b) const override
-  {
+  std::unique_ptr<plugin::text::PluginConfig>
+  createConfig(std::unique_ptr<PluginSettingsBackend> b) const override {
     using plugin::ip::IpAddressPluginConfig;
     return std::make_unique<IpAddressPluginConfig>(std::move(b));
   }
 
-  QVector<QWidget*> configPagesBeforeCommonPages() override;
+  QVector<QWidget *> configPagesBeforeCommonPages() override;
 };

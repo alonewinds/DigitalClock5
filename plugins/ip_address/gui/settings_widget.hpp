@@ -15,22 +15,21 @@ namespace Ui {
 class SettingsWidget;
 }
 
-class SettingsWidget : public QWidget
-{
+class SettingsWidget : public QWidget {
   Q_OBJECT
 
 public:
-  explicit SettingsWidget(QWidget* parent = nullptr);
+  explicit SettingsWidget(QWidget *parent = nullptr);
   ~SettingsWidget();
 
-  void initControls(IpAddressPluginInstanceConfig* icfg);
+  void initControls(IpAddressPluginInstanceConfig *icfg);
 
 signals:
   void addressesListChanged();
   void extIPDetectorChanged();
 
 private slots:
-  void onInterfacesListChanged(const NetworkInterfacesModel::SelectedIPs& ips);
+  void onInterfacesListChanged(const NetworkInterfacesModel::SelectedIPs &ips);
 
   void on_show_internal_addr_cbox_clicked(bool checked);
   void on_show_external_addr_cbox_clicked(bool checked);
@@ -39,11 +38,13 @@ private slots:
 
   void on_ext_addr_detect_cbox_activated(int index);
 
-private:
-  Ui::SettingsWidget* ui;
-  NetworkInterfacesModel* iface_model;
-  IpAddressPluginInstanceConfig* cfg = nullptr;
-};
+  void on_display_inline_cbox_clicked(bool checked);
+  void on_inline_spacing_spinbox_valueChanged(int value);
 
+private:
+  Ui::SettingsWidget *ui;
+  NetworkInterfacesModel *iface_model;
+  IpAddressPluginInstanceConfig *cfg = nullptr;
+};
 
 } // namespace plugin::ip

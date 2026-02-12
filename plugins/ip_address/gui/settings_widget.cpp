@@ -9,11 +9,9 @@
 
 namespace plugin::ip {
 
-SettingsWidget::SettingsWidget(QWidget* parent)
-  : QWidget(parent)
-  , ui(new Ui::SettingsWidget)
-  , iface_model(new NetworkInterfacesModel(this))
-{
+SettingsWidget::SettingsWidget(QWidget *parent)
+    : QWidget(parent), ui(new Ui::SettingsWidget),
+      iface_model(new NetworkInterfacesModel(this)) {
   ui->setupUi(this);
 
   auto no_local_model = new LinkLocalAddressesFilterModel(this);
@@ -23,21 +21,19 @@ SettingsWidget::SettingsWidget(QWidget* parent)
   ui->interfaces_list->setModel(only_up_model);
 
   for (int r = 0; r < ui->interfaces_list->model()->rowCount(); r++)
-    ui->interfaces_list->setExpanded(ui->interfaces_list->model()->index(r, 0), true);
+    ui->interfaces_list->setExpanded(ui->interfaces_list->model()->index(r, 0),
+                                     true);
 
   for (int i = 0; i < detectors_count(); i++)
     ui->ext_addr_detect_cbox->addItem(ext_ip_detector(i).name);
 
-  connect(iface_model, &NetworkInterfacesModel::selectedIPsChanged, this, &SettingsWidget::onInterfacesListChanged);
+  connect(iface_model, &NetworkInterfacesModel::selectedIPsChanged, this,
+          &SettingsWidget::onInterfacesListChanged);
 }
 
-SettingsWidget::~SettingsWidget()
-{
-  delete ui;
-}
+SettingsWidget::~SettingsWidget() { delete ui; }
 
-void SettingsWidget::initControls(IpAddressPluginInstanceConfig* icfg)
-{
+void SettingsWidget::initControls(IpAddressPluginInstanceConfig *icfg) {
   Q_ASSERT(icfg);
   cfg = icfg;
 
@@ -45,47 +41,58 @@ void SettingsWidget::initControls(IpAddressPluginInstanceConfig* icfg)
 
   ui->show_internal_addr_cbox->setChecked(cfg->getShowInternal());
   iface_model->setSelectedIPs(cfg->getInternalAddresses());
-  ui->show_external_addr_cbox->setChecked(cfg->getShowExternalIPv4() || cfg->getShowExternalIPv6());
+  ui->show_external_addr_cbox->setChecked(cfg->getShowExternalIPv4() ||
+                                          cfg->getShowExternalIPv6());
   ui->show_external_v4_cbox->setChecked(cfg->getShowExternalIPv4());
   ui->show_external_v6_cbox->setChecked(cfg->getShowExternalIPv6());
-  ui->ext_addr_detect_cbox->setCurrentIndex(std::clamp(cfg->getExternalIPDetector(), 0, detectors_count()));
+  ui->ext_addr_detect_cbox->setCurrentIndex(
+      std::clamp(cfg->getExternalIPDetector(), 0, detectors_count()));
+  ui->display_inline_cbox->setChecked(cfg->getDisplayInline());
+  ui->inline_spacing_spinbox->setValue(cfg->getInlineSpacing());
 }
 
-void SettingsWidget::onInterfacesListChanged(const NetworkInterfacesModel::SelectedIPs& ips)
-{
+void SettingsWidget::onInterfacesListChanged(
+    const NetworkInterfacesModel::SelectedIPs &ips) {
   cfg->setInternalAddresses(ips);
   emit addressesListChanged();
 }
 
-void SettingsWidget::on_show_internal_addr_cbox_clicked(bool checked)
-{
+void SettingsWidget::on_show_internal_addr_cbox_clicked(bool checked) {
   cfg->setShowInternal(checked);
   emit addressesListChanged();
 }
 
-void SettingsWidget::on_show_external_addr_cbox_clicked(bool checked)
-{
-  cfg->setShowExternalIPv4(checked ? ui->show_external_v4_cbox->isChecked() : false);
-  cfg->setShowExternalIPv6(checked ? ui->show_external_v6_cbox->isChecked() : false);
+void SettingsWidget::on_show_external_addr_cbox_clicked(bool checked) {
+  cfg->setShowExternalIPv4(checked ? ui->show_external_v4_cbox->isChecked()
+                                   : false);
+  cfg->setShowExternalIPv6(checked ? ui->show_external_v6_cbox->isChecked()
+                                   : false);
   emit addressesListChanged();
 }
 
-void SettingsWidget::on_show_external_v4_cbox_clicked(bool checked)
-{
+void SettingsWidget::on_show_external_v4_cbox_clicked(bool checked) {
   cfg->setShowExternalIPv4(checked);
   emit addressesListChanged();
 }
 
-void SettingsWidget::on_show_external_v6_cbox_clicked(bool checked)
-{
+void SettingsWidget::on_show_external_v6_cbox_clicked(bool checked) {
   cfg->setShowExternalIPv6(checked);
   emit addressesListChanged();
 }
 
-void SettingsWidget::on_ext_addr_detect_cbox_activated(int index)
-{
+void SettingsWidget::on_ext_addr_detect_cbox_activated(int index) {
   cfg->setExternalIPDetector(index);
   emit extIPDetectorChanged();
+}
+
+void SettingsWidget::on_display_inline_cbox_clicked(bool checked) {
+  cfg->setDisplayInline(checked);
+  emit addressesListChanged();
+}
+
+void SettingsWidget::on_inline_spacing_spinbox_valueChanged(int value) {
+  cfg->setInlineSpacing(value);
+  emit addressesListChanged();
 }
 
 } // namespace plugin::ip

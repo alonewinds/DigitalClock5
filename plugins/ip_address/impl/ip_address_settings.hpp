@@ -10,8 +10,7 @@
 
 namespace plugin::ip {
 
-class IpAddressPluginInstanceConfig : public text::PluginInstanceConfig
-{
+class IpAddressPluginInstanceConfig : public text::PluginInstanceConfig {
   Q_OBJECT
 
 public:
@@ -22,13 +21,14 @@ public:
   CONFIG_OPTION(ShowExternalIPv6, "show_external_ipv6", bool, false)
   CONFIG_OPTION(ExternalIPDetector, "external_ip_detector", int, 0)
 
+  CONFIG_OPTION(DisplayInline, "display_inline", bool, false)
+  CONFIG_OPTION(InlineSpacing, "inline_spacing", int, 2)
+
   NetworkInterfacesModel::SelectedIPs getInternalAddresses() const;
-  void setInternalAddresses(const NetworkInterfacesModel::SelectedIPs& ips);
+  void setInternalAddresses(const NetworkInterfacesModel::SelectedIPs &ips);
 };
 
-
-class IpAddressPluginConfig : public text::PluginConfig
-{
+class IpAddressPluginConfig : public text::PluginConfig {
   Q_OBJECT
 
 public:
@@ -36,8 +36,7 @@ public:
 
 protected:
   std::unique_ptr<text::PluginInstanceConfig>
-  createInstanceImpl(std::unique_ptr<SettingsStorage> st) const override
-  {
+  createInstanceImpl(std::unique_ptr<SettingsStorage> st) const override {
     return std::make_unique<IpAddressPluginInstanceConfig>(std::move(st));
   }
 };
