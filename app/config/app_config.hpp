@@ -13,19 +13,19 @@
 
 #include "global_options.hpp"
 
-#define GLOBAL_OPTION(type, name)                             \
-  void set##name(const type& v) { setValue(opt::name, v); }   \
+#define GLOBAL_OPTION(type, name)                                              \
+  void set##name(const type &v) { setValue(opt::name, v); }                    \
   type get##name() const { return value<type>(opt::name); }
 
-class GlobalConfig final : public QObject, public ConfigBase
-{
+class GlobalConfig final : public QObject, public ConfigBase {
   Q_OBJECT
 
 public:
-  explicit GlobalConfig(std::unique_ptr<SettingsStorage> st, QObject* parent = nullptr);
+  explicit GlobalConfig(std::unique_ptr<SettingsStorage> st,
+                        QObject *parent = nullptr);
 
   QVector<size_t> getActiveInstancesList() const;
-  void setActiveInstancesList(const QVector<size_t>& l);
+  void setActiveInstancesList(const QVector<size_t> &l);
 
   GLOBAL_OPTION(QString, Locale)
 
@@ -68,15 +68,11 @@ private:
   static QString key(opt::GlobalOptions o);
   static QVariant def_value(opt::GlobalOptions o);
 
-  template<typename T>
-  void setValue(opt::GlobalOptions opt, const T& val)
-  {
+  template <typename T> void setValue(opt::GlobalOptions opt, const T &val) {
     ConfigBase::setValue(key(opt), val);
   }
 
-  template<typename T>
-  T value(opt::GlobalOptions opt) const
-  {
+  template <typename T> T value(opt::GlobalOptions opt) const {
     const auto def = def_value(opt);
     return ConfigBase::value(key(opt), def.value<T>());
   }
@@ -84,20 +80,22 @@ private:
 
 #undef GLOBAL_OPTION
 
-#define INSTANCE_OPTION(type, name)                           \
-  void set##name(const type& v) { setValue(opt::name, v); }   \
+#define INSTANCE_OPTION(type, name)                                            \
+  void set##name(const type &v) { setValue(opt::name, v); }                    \
   type get##name() const { return value<type>(opt::name); }
 
 class AppConfig;
 
-class InstanceConfig final : public QObject, public ConfigBase
-{
+class InstanceConfig final : public QObject, public ConfigBase {
   Q_OBJECT
 
 public:
-  InstanceConfig(std::unique_ptr<SettingsStorage> st, AppConfig& cfg, QObject* parent = nullptr);
+  InstanceConfig(std::unique_ptr<SettingsStorage> st, AppConfig &cfg,
+                 QObject *parent = nullptr);
 
-  bool isSharedOption(opt::InstanceOptions opt) const { return !_unique_opts.contains(opt); }
+  bool isSharedOption(opt::InstanceOptions opt) const {
+    return !_unique_opts.contains(opt);
+  }
 
   INSTANCE_OPTION(bool, UseSkin)
   INSTANCE_OPTION(QString, Skin)
@@ -155,6 +153,15 @@ public:
 
   INSTANCE_OPTION(bool, HideClockWidget)
 
+  // per-instance plugin filter (not subject to option sharing)
+  QStringList getDisabledPlugins() const {
+    return ConfigBase::value("plugins/disabled", QStringList());
+  }
+
+  void setDisabledPlugins(const QStringList &l) {
+    ConfigBase::setValue("plugins/disabled", l);
+  }
+
 public slots:
   void commit();
   void discard();
@@ -163,18 +170,14 @@ private:
   static QString key(opt::InstanceOptions o);
   static QVariant def_value(opt::InstanceOptions o);
 
-  template<typename T>
-  void setValue(opt::InstanceOptions opt, const T& val)
-  {
+  template <typename T> void setValue(opt::InstanceOptions opt, const T &val) {
     if (shouldRedirect(opt))
       targetInstance()->setValue(opt, val);
     else
       ConfigBase::setValue(key(opt), val);
   }
 
-  template<typename T>
-  T value(opt::InstanceOptions opt) const
-  {
+  template <typename T> T value(opt::InstanceOptions opt) const {
     if (shouldRedirect(opt))
       return targetInstance()->value<T>(opt);
     const auto def = def_value(opt);
@@ -182,26 +185,24 @@ private:
   }
 
   bool shouldRedirect(opt::InstanceOptions o) const;
-  InstanceConfig* targetInstance() const;
+  InstanceConfig *targetInstance() const;
 
 private:
-  AppConfig& _cfg;
+  AppConfig &_cfg;
   QSet<opt::InstanceOptions> _unique_opts;
 };
 
 #undef INSTANCE_OPTION
 
-
-class AppConfig final : public QObject
-{
+class AppConfig final : public QObject {
   Q_OBJECT
 
 public:
-  explicit AppConfig(SettingsBackend& st, QObject* parent = nullptr);
+  explicit AppConfig(SettingsBackend &st, QObject *parent = nullptr);
 
   // Qt style: const function returns non-const pointer
-  GlobalConfig* global() const noexcept { return _global.get(); }
-  InstanceConfig* instance(size_t i) const noexcept;
+  GlobalConfig *global() const noexcept { return _global.get(); }
+  InstanceConfig *instance(size_t i) const noexcept;
 
   void addInstance(size_t i);
   void removeInstance(size_t i);
@@ -219,7 +220,7 @@ private:
   std::unique_ptr<InstanceConfig> createInstance(size_t i);
 
 private:
-  SettingsBackend& _st;
+  SettingsBackend &_st;
   std::unique_ptr<GlobalConfig> _global;
   std::map<size_t, std::unique_ptr<InstanceConfig>> _instances;
 };

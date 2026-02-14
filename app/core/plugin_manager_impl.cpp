@@ -19,23 +19,17 @@
 
 namespace {
 
-class PluginProber
-{
+class PluginProber {
 public:
-  explicit PluginProber(const QString& filename)
-    : _loader(filename)
-  {
+  explicit PluginProber(const QString &filename) : _loader(filename) {
     _loader.load();
   }
 
-  ~PluginProber()
-  {
-    _loader.unload();
-  }
+  ~PluginProber() { _loader.unload(); }
 
-  operator bool()
-  {
-    return _loader.isLoaded() && qobject_cast<ClockPlugin*>(_loader.instance());
+  operator bool() {
+    return _loader.isLoaded() &&
+           qobject_cast<ClockPlugin *>(_loader.instance());
   }
 
 private:
@@ -44,125 +38,128 @@ private:
 
 } // namespace
 
-class PluginHandleImpl
-{
+class PluginHandleImpl {
 public:
-  PluginHandleImpl(const QString& filename, ClockApplication* app, PluginManager* pm)
-    : _loader(filename)
-    , _app(app)
-    , _pm(pm)
-  {
+  PluginHandleImpl(const QString &filename, ClockApplication *app,
+                   PluginManager *pm)
+      : _loader(filename), _app(app), _pm(pm) {
     _loader.load();
     _metadata = _loader.metaData().value("MetaData").toObject().toVariantHash();
     setTranslator(loadTranslation(id(), app->activeLang()));
   }
 
-  virtual ~PluginHandleImpl()
-  {
+  virtual ~PluginHandleImpl() {
     if (_tr)
       QCoreApplication::removeTranslator(_tr.get());
     _loader.unload();
   }
 
-  void setTranslator(std::unique_ptr<QTranslator> tr)
-  {
-    if (_tr) QCoreApplication::removeTranslator(_tr.get());
+  void setTranslator(std::unique_ptr<QTranslator> tr) {
+    if (_tr)
+      QCoreApplication::removeTranslator(_tr.get());
     _tr = std::move(tr);
-    if (_tr) QCoreApplication::installTranslator(_tr.get());
+    if (_tr)
+      QCoreApplication::installTranslator(_tr.get());
   }
 
   inline bool isActive() const noexcept { return _active; }
 
-  bool isConfigurable() const
-  {
+  bool isConfigurable() const {
     return _metadata.value("configurable", false).toBool();
   }
 
-  QString id() const
-  {
+  QString id() const {
     QFileInfo fi(_loader.fileName());
     return _metadata.value("name", fi.baseName()).toString();
   }
 
   QString fileName() const { return _loader.fileName(); }
 
-  const QVariantHash& metadata() const noexcept { return _metadata; }
+  const QVariantHash &metadata() const noexcept { return _metadata; }
 
-  ClockPlugin* plugin()
-  {
-    return qobject_cast<ClockPlugin*>(_loader.instance());
+  ClockPlugin *plugin() {
+    return qobject_cast<ClockPlugin *>(_loader.instance());
   }
 
-  void handleDestroyed()
-  {
-    _pm->maybeUnload(id());
-  }
+  void handleDestroyed() { _pm->maybeUnload(id()); }
 
-  void setActive(bool act)
-  {
+  void setActive(bool act) {
     _active = act;
     if (_active && !_initialized)
       initialize();
 
     const auto act_insts = _app->config()->global()->getActiveInstancesList();
-    for (const auto idx : act_insts)
-      if (auto inst = plugin()->instance(idx))
-        setInstanceActive(inst, idx, act);
+    for (const auto idx : act_insts) {
+      if (auto inst = plugin()->instance(idx)) {
+        if (act) {
+          // only start if not disabled for this instance
+          if (!_pm->isPluginDisabledForInstance(id(), idx))
+            setInstanceActive(inst, idx, true);
+        } else {
+          // only stop if it was started (i.e. not disabled)
+          if (!_pm->isPluginDisabledForInstance(id(), idx))
+            setInstanceActive(inst, idx, false);
+        }
+      }
+    }
 
     _pm->setPluginActive(id(), act);
   }
 
-  void configure(QWidget* parent, size_t idx)
-  {
+  void setInstanceEnabled(size_t idx, bool enabled) {
+    if (!_active)
+      return;
+    if (auto inst = plugin()->instance(idx))
+      setInstanceActive(inst, idx, enabled);
+  }
+
+  void configure(QWidget *parent, size_t idx) {
     if (!_initialized)
       initialize();
     plugin()->configure(parent, idx);
   }
 
-  void update(size_t idx, const QDateTime& dt)
-  {
+  void update(size_t idx, const QDateTime &dt) {
     if (auto inst = plugin()->instance(idx))
       inst->update(dt);
   }
 
-  void handleOptionChange(size_t i, opt::InstanceOptions o, const QVariant& v)
-  {
+  void handleOptionChange(size_t i, opt::InstanceOptions o, const QVariant &v) {
     onOptionChanged(plugin()->instance(i), o, v);
   }
 
 protected:
-  void initPluginAccess(ClockPluginInstance* inst, size_t idx) const;
-  void setInstanceActive(ClockPluginInstance* inst, size_t idx, bool act) const;
+  void initPluginAccess(ClockPluginInstance *inst, size_t idx) const;
+  void setInstanceActive(ClockPluginInstance *inst, size_t idx, bool act) const;
 
-  void onOptionChanged(ClockPluginInstance* inst, opt::InstanceOptions o, const QVariant& v);
+  void onOptionChanged(ClockPluginInstance *inst, opt::InstanceOptions o,
+                       const QVariant &v);
 
 private:
-  void initSettingsPlugin(ClockPluginInstance* inst, size_t idx) const;
-  void deinitSettingsPlugin(ClockPluginInstance* inst, size_t idx) const;
+  void initSettingsPlugin(ClockPluginInstance *inst, size_t idx) const;
+  void deinitSettingsPlugin(ClockPluginInstance *inst, size_t idx) const;
 
-  auto createPrefixedStorage(QString p) const
-  {
-    auto st = std::make_unique<SettingsStorageImpl>(std::ref(*_app->settings()));
-    return std::make_unique<PrefixedSettingsStorage>(std::move(st), std::move(p));
+  auto createPrefixedStorage(QString p) const {
+    auto st =
+        std::make_unique<SettingsStorageImpl>(std::ref(*_app->settings()));
+    return std::make_unique<PrefixedSettingsStorage>(std::move(st),
+                                                     std::move(p));
   }
 
-  auto createPluginSettingsStorage() const
-  {
+  auto createPluginSettingsStorage() const {
     return createPrefixedStorage(QString("plugin_%1").arg(id()));
   }
 
-  auto createPluginStateStorage() const
-  {
+  auto createPluginStateStorage() const {
     return createPrefixedStorage(QString("state/plugin_%1").arg(id()));
   }
 
-  void initialize()
-  {
+  void initialize() {
     Q_ASSERT(!_initialized);
     ClockPlugin::Context ctx = {
-      .settings = createPluginSettingsStorage(),
-      .state = createPluginStateStorage(),
-      .active_instances = _app->config()->global()->getActiveInstancesList(),
+        .settings = createPluginSettingsStorage(),
+        .state = createPluginStateStorage(),
+        .active_instances = _app->config()->global()->getActiveInstancesList(),
     };
     plugin()->init(std::move(ctx));
     _initialized = true;
@@ -170,8 +167,8 @@ private:
 
 private:
   QPluginLoader _loader;
-  ClockApplication* _app;
-  PluginManager* _pm;
+  ClockApplication *_app;
+  PluginManager *_pm;
 
   std::unique_ptr<QTranslator> _tr;
 
@@ -181,21 +178,20 @@ private:
   bool _active = false;
 };
 
-
-void PluginHandleImpl::initPluginAccess(ClockPluginInstance* inst, size_t idx) const
-{
-  if (auto wa = dynamic_cast<WidgetAccess*>(inst))
+void PluginHandleImpl::initPluginAccess(ClockPluginInstance *inst,
+                                        size_t idx) const {
+  if (auto wa = dynamic_cast<WidgetAccess *>(inst))
     wa->init(_app->window(idx));
 
-  if (auto sa = dynamic_cast<SkinSystemAccess*>(inst))
+  if (auto sa = dynamic_cast<SkinSystemAccess *>(inst))
     sa->init(_app->getSkinManager());
 
-  if (auto ta = dynamic_cast<TrayIconAccess*>(inst))
+  if (auto ta = dynamic_cast<TrayIconAccess *>(inst))
     ta->init(_app->getTrayIconManager());
 }
 
-void PluginHandleImpl::setInstanceActive(ClockPluginInstance* inst, size_t idx, bool act) const
-{
+void PluginHandleImpl::setInstanceActive(ClockPluginInstance *inst, size_t idx,
+                                         bool act) const {
   if (act) {
     initSettingsPlugin(inst, idx);
     initPluginAccess(inst, idx);
@@ -206,90 +202,74 @@ void PluginHandleImpl::setInstanceActive(ClockPluginInstance* inst, size_t idx, 
   }
 }
 
-void PluginHandleImpl::onOptionChanged(ClockPluginInstance* inst, opt::InstanceOptions o, const QVariant& v)
-{
-  if (auto sp = qobject_cast<SettingsPluginInstance*>(inst))
+void PluginHandleImpl::onOptionChanged(ClockPluginInstance *inst,
+                                       opt::InstanceOptions o,
+                                       const QVariant &v) {
+  if (auto sp = qobject_cast<SettingsPluginInstance *>(inst))
     sp->onOptionChanged(o, v);
 }
 
-void PluginHandleImpl::initSettingsPlugin(ClockPluginInstance* inst, size_t idx) const
-{
-  if (auto sp = qobject_cast<SettingsPluginInstance*>(inst)) {
+void PluginHandleImpl::initSettingsPlugin(ClockPluginInstance *inst,
+                                          size_t idx) const {
+  if (auto sp = qobject_cast<SettingsPluginInstance *>(inst)) {
     // *INDENT-OFF*
-    QObject::connect(sp, &SettingsPluginInstance::optionChanged,
-                     [this, idx](auto&&... args) { _pm->changeOption(idx, args...); });
+    QObject::connect(
+        sp, &SettingsPluginInstance::optionChanged,
+        [this, idx](auto &&...args) { _pm->changeOption(idx, args...); });
     // *INDENT-ON*
     sp->init(_pm->_curr_settings[idx]);
   }
 }
 
-void PluginHandleImpl::deinitSettingsPlugin(ClockPluginInstance* inst, size_t idx) const
-{
-  if (auto sp = qobject_cast<SettingsPluginInstance*>(inst))
-    QObject::disconnect(sp, &SettingsPluginInstance::optionChanged, nullptr, nullptr);
+void PluginHandleImpl::deinitSettingsPlugin(ClockPluginInstance *inst,
+                                            size_t idx) const {
+  if (auto sp = qobject_cast<SettingsPluginInstance *>(inst))
+    QObject::disconnect(sp, &SettingsPluginInstance::optionChanged, nullptr,
+                        nullptr);
 }
 
-
 PluginHandle::PluginHandle(std::shared_ptr<PluginHandleImpl> impl)
-  : _impl(std::move(impl))
-{
+    : _impl(std::move(impl)) {
   Q_ASSERT(_impl);
 }
 
-PluginHandle::~PluginHandle()
-{
+PluginHandle::~PluginHandle() {
   // notify implementation about handle destruction
   // implementation in turn may remove itself from the loaded list
   // (if it is the only last copy)
   // it asks manager to do this, as it doesn't know about shared pointer
   // and publicly visible handle should not know/share manager
-  if (_impl) _impl->handleDestroyed();
+  if (_impl)
+    _impl->handleDestroyed();
 }
 
-bool PluginHandle::isActive() const
-{
-  return _impl->isActive();
-}
+bool PluginHandle::isActive() const { return _impl->isActive(); }
 
-bool PluginHandle::isConfigurable() const
-{
-  return _impl->isConfigurable();
-}
+bool PluginHandle::isConfigurable() const { return _impl->isConfigurable(); }
 
-QString PluginHandle::id() const
-{
-  return _impl->id();
-}
+QString PluginHandle::id() const { return _impl->id(); }
 
-QString PluginHandle::fileName() const
-{
-  return _impl->fileName();
-}
+QString PluginHandle::fileName() const { return _impl->fileName(); }
 
-QString PluginHandle::name() const
-{
-  return _impl->plugin()->name();
-}
+QString PluginHandle::name() const { return _impl->plugin()->name(); }
 
-QString PluginHandle::description() const
-{
+QString PluginHandle::description() const {
   return _impl->plugin()->description();
 }
 
-QIcon PluginHandle::icon() const
-{
+QIcon PluginHandle::icon() const {
   const auto id = this->id();
 
   const auto known_names = {
-    QString(":/icons/%1").arg(id),
-    QString(":/%1/icon").arg(id),
-    QString(":/%1/logo").arg(id),
+      QString(":/icons/%1").arg(id),
+      QString(":/%1/icon").arg(id),
+      QString(":/%1/logo").arg(id),
   };
 
   const auto known_exts = {"svg", "png"};
 
-  for (const auto& p : known_names) {
-    for (const auto& e : known_exts) {
+  for (const auto &p : known_names) {
+    for (const auto &e : known_exts) {
       auto fn = QString("%1.%2").arg(p, e);
       if (QFile::exists(fn)) {
         return QIcon(fn);
@@ -300,55 +280,48 @@ QIcon PluginHandle::icon() const
   return QIcon(":/icons/plugins.svg");
 }
 
-QVariantHash PluginHandle::metadata() const
-{
-  return _impl->metadata();
+QVariantHash PluginHandle::metadata() const { return _impl->metadata(); }
+
+void PluginHandle::setActive(bool act) { _impl->setActive(act); }
+
+void PluginHandle::setInstanceEnabled(size_t idx, bool enabled) {
+  _impl->setInstanceEnabled(idx, enabled);
 }
 
-void PluginHandle::setActive(bool act)
-{
-  _impl->setActive(act);
-}
-
-void PluginHandle::configure(QWidget* parent, size_t idx)
-{
+void PluginHandle::configure(QWidget *parent, size_t idx) {
   _impl->configure(parent, idx);
 }
 
-
-PluginManager::PluginManager(ClockApplication* app, QObject* parent)
-  : QObject(parent)
-  , _app(app)
-{
+PluginManager::PluginManager(ClockApplication *app, QObject *parent)
+    : QObject(parent), _app(app) {
   Q_ASSERT(_app);
 }
 
-PluginManager::~PluginManager()
-{
-  unloadAll();
-}
+PluginManager::~PluginManager() { unloadAll(); }
 
-void PluginManager::retranslate(const QString& lang)
-{
-  for (auto iter = _active_plugins.begin(); iter != _active_plugins.end(); ++iter)
+void PluginManager::retranslate(const QString &lang) {
+  for (auto iter = _active_plugins.begin(); iter != _active_plugins.end();
+       ++iter)
     iter.value()->setTranslator(::loadTranslation(iter.value()->id(), lang));
-  for (auto iter = _loaded_plugins.begin(); iter != _loaded_plugins.end(); ++iter)
+  for (auto iter = _loaded_plugins.begin(); iter != _loaded_plugins.end();
+       ++iter)
     iter.value()->setTranslator(::loadTranslation(iter.value()->id(), lang));
 }
 
-void PluginManager::load(const QStringList& plgs)
-{
+void PluginManager::load(const QStringList &plgs) {
   const auto avail_plgs = enumerate();
-  for (const auto& id : plgs) {
-    for (const auto& p : avail_plgs) {
+  for (const auto &id : plgs) {
+    for (const auto &p : avail_plgs) {
       if (p->id() == id) {
         // look into already loaded plugins first
-        if (auto iter = _loaded_plugins.find(id); iter != _loaded_plugins.end()) {
+        if (auto iter = _loaded_plugins.find(id);
+            iter != _loaded_plugins.end()) {
           (*iter)->setActive(true);
           break;
         }
-        auto& ph = _active_plugins[id];
-        if (ph) break;  // plugin already loaded
+        auto &ph = _active_plugins[id];
+        if (ph)
+          break; // plugin already loaded
         ph = p;
         ph->setActive(true);
       }
@@ -356,30 +329,26 @@ void PluginManager::load(const QStringList& plgs)
   }
 }
 
-void PluginManager::unload(const QStringList& plgs)
-{
-  for (const auto& id : plgs) {
+void PluginManager::unload(const QStringList &plgs) {
+  for (const auto &id : plgs) {
     if (auto p = _active_plugins.value(id); p)
       p->setActive(false);
   }
 }
 
-void PluginManager::unloadAll()
-{
-  unload(_active_plugins.keys());
-}
+void PluginManager::unloadAll() { unload(_active_plugins.keys()); }
 
-QVector<PluginHandle> PluginManager::plugins()
-{
+QVector<PluginHandle> PluginManager::plugins() {
   QVector<PluginHandle> res_plgs;
 
   const auto plgs = enumerate();
-  for (const auto& p : plgs) {
+  for (const auto &p : plgs) {
     if (auto ap = _active_plugins.value(p->id())) {
       res_plgs.emplace_back(std::move(ap));
     } else {
-      auto& lp = _loaded_plugins[p->id()];
-      if (!lp) lp = p;
+      auto &lp = _loaded_plugins[p->id()];
+      if (!lp)
+        lp = p;
       res_plgs.emplace_back(lp);
     }
   }
@@ -388,32 +357,36 @@ QVector<PluginHandle> PluginManager::plugins()
   return res_plgs;
 }
 
-void PluginManager::tick(size_t idx, const QDateTime& dt)
-{
-  for (auto iter = _active_plugins.begin(); iter != _active_plugins.end(); ++iter)
-    iter.value()->update(idx, dt);
+void PluginManager::tick(size_t idx, const QDateTime &dt) {
+  for (auto iter = _active_plugins.begin(); iter != _active_plugins.end();
+       ++iter)
+    if (!isPluginDisabledForInstance(iter.key(), idx))
+      iter.value()->update(idx, dt);
 }
 
-void PluginManager::onOptionChanged(size_t i, opt::InstanceOptions o, const QVariant& v)
-{
-  for (auto iter = _active_plugins.begin(); iter != _active_plugins.end(); ++iter)
-    iter.value()->handleOptionChange(i, o, v);
+void PluginManager::onOptionChanged(size_t i, opt::InstanceOptions o,
+                                    const QVariant &v) {
+  for (auto iter = _active_plugins.begin(); iter != _active_plugins.end();
+       ++iter)
+    if (!isPluginDisabledForInstance(iter.key(), i))
+      iter.value()->handleOptionChange(i, o, v);
   // record current settings
   _curr_settings[i][o] = v;
 }
 
-QVector<std::shared_ptr<PluginHandleImpl> > PluginManager::enumerate()
-{
+QVector<std::shared_ptr<PluginHandleImpl>> PluginManager::enumerate() {
   QVector<std::shared_ptr<PluginHandleImpl>> avail_plgs;
 
   QDir d(QCoreApplication::applicationDirPath());
 #ifdef Q_OS_MACOS
-  if (!d.cd("../PlugIns")) return avail_plgs;
+  if (!d.cd("../PlugIns"))
+    return avail_plgs;
 #else
-  if (!d.cd("plugins")) return avail_plgs;
+  if (!d.cd("plugins"))
+    return avail_plgs;
 #endif
   const auto files = d.entryList(QDir::Files);
-  for (const auto& f : files) {
+  for (const auto &f : files) {
     const auto fn = d.absoluteFilePath(f);
     if (PluginProber prober(fn); prober) {
       avail_plgs.push_back(std::make_shared<PluginHandleImpl>(fn, _app, this));
@@ -422,16 +395,15 @@ QVector<std::shared_ptr<PluginHandleImpl> > PluginManager::enumerate()
   return avail_plgs;
 }
 
-void PluginManager::changeOption(size_t i, opt::InstanceOptions o, const QVariant& v)
-{
+void PluginManager::changeOption(size_t i, opt::InstanceOptions o,
+                                 const QVariant &v) {
   const auto gcfg = _app->config()->global();
   if (gcfg->getOptionsSharing() && i != gcfg->getRefInstance())
     return;
   emit optionChanged(i, o, v);
 }
 
-void PluginManager::setPluginActive(const QString& id, bool active)
-{
+void PluginManager::setPluginActive(const QString &id, bool active) {
   if (active && _active_plugins.contains(id)) {
     Q_ASSERT(!_loaded_plugins.contains(id));
     return;
@@ -455,8 +427,15 @@ void PluginManager::setPluginActive(const QString& id, bool active)
   }
 }
 
-void PluginManager::maybeUnload(const QString& id)
-{
+bool PluginManager::isPluginDisabledForInstance(const QString &id,
+                                                size_t idx) const {
+  auto icfg = _app->config()->instance(idx);
+  if (!icfg)
+    return false;
+  return icfg->getDisabledPlugins().contains(id);
+}
+
+void PluginManager::maybeUnload(const QString &id) {
   Q_ASSERT(_loaded_plugins.contains(id) || _active_plugins.contains(id));
   auto iter = _loaded_plugins.find(id);
   // at "the last iteration" 2 copies of shared pointer exist:

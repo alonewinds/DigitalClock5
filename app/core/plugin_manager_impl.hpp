@@ -26,23 +26,25 @@ class QWidget;
 // object can be freely copied
 // plugin should not be initialized until it is required
 // no methods should be called on invalid handle
-class PluginHandle
-{
+class PluginHandle {
 public:
-  PluginHandle() = default;   // constructs invalid handle
+  PluginHandle() = default; // constructs invalid handle
   explicit PluginHandle(std::shared_ptr<PluginHandleImpl> impl);
   ~PluginHandle();
 
-  PluginHandle(const PluginHandle& ) = default;
-  PluginHandle(PluginHandle&& ) = default;
+  PluginHandle(const PluginHandle &) = default;
+  PluginHandle(PluginHandle &&) = default;
 
-  PluginHandle& operator =(const PluginHandle& ) = default;
-  PluginHandle& operator =(PluginHandle&& ) = default;
+  PluginHandle &operator=(const PluginHandle &) = default;
+  PluginHandle &operator=(PluginHandle &&) = default;
 
   operator bool() const noexcept { return !!_impl; }
 
   bool isActive() const;
   bool isConfigurable() const;
+
+  // per-instance enable/disable (starts/stops plugin for a single window)
+  void setInstanceEnabled(size_t idx, bool enabled);
 
   QString id() const;
   QString fileName() const;
@@ -58,25 +60,23 @@ public:
   inline void activate() { setActive(true); }
   inline void deactivate() { setActive(false); }
 
-  void configure(QWidget* parent, size_t idx);
+  void configure(QWidget *parent, size_t idx);
 
 private:
   std::shared_ptr<PluginHandleImpl> _impl;
 };
 
-
-class PluginManager : public QObject
-{
+class PluginManager : public QObject {
   Q_OBJECT
 
 public:
-  explicit PluginManager(ClockApplication* app, QObject* parent = nullptr);
+  explicit PluginManager(ClockApplication *app, QObject *parent = nullptr);
   ~PluginManager();
 
-  void retranslate(const QString& lang);
+  void retranslate(const QString &lang);
 
-  void load(const QStringList& plgs);
-  void unload(const QStringList& plgs);
+  void load(const QStringList &plgs);
+  void unload(const QStringList &plgs);
   void unloadAll();
 
   // returns all available plugins
@@ -84,28 +84,30 @@ public:
   QVector<PluginHandle> plugins();
 
   // periodic updates, time is in instance's time zone
-  void tick(size_t idx, const QDateTime& dt);
+  void tick(size_t idx, const QDateTime &dt);
 
 public slots:
-  void onOptionChanged(size_t i, opt::InstanceOptions o, const QVariant& v);
+  void onOptionChanged(size_t i, opt::InstanceOptions o, const QVariant &v);
 
 signals:
-  void optionChanged(size_t i, opt::InstanceOptions o, const QVariant& v);
+  void optionChanged(size_t i, opt::InstanceOptions o, const QVariant &v);
 
 private:
   QVector<std::shared_ptr<PluginHandleImpl>> enumerate();
 
-  friend class PluginHandleImpl;    // to avoid QObject inheritance
+  friend class PluginHandleImpl; // to avoid QObject inheritance
   // private interface for handle implementation
   // handles option change requests from plugins
-  void changeOption(size_t i, opt::InstanceOptions o, const QVariant& v);
+  void changeOption(size_t i, opt::InstanceOptions o, const QVariant &v);
   // moves plugin from loaded to active and vice versa
-  void setPluginActive(const QString& id, bool active);
+  void setPluginActive(const QString &id, bool active);
+  // checks if given plugin is disabled for a specific instance
+  bool isPluginDisabledForInstance(const QString &id, size_t idx) const;
   // may remove given plugin from loaded plugins list
-  void maybeUnload(const QString& id);
+  void maybeUnload(const QString &id);
 
 private:
-  ClockApplication* _app;
+  ClockApplication *_app;
   QHash<QString, std::shared_ptr<PluginHandleImpl>> _active_plugins;
   // keeps only temporarily loaded plugins, excluding active ones
   QHash<QString, std::shared_ptr<PluginHandleImpl>> _loaded_plugins;
