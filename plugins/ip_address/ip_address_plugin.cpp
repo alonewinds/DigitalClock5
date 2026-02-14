@@ -4,52 +4,51 @@
 
 #include "ip_address_plugin.hpp"
 
-#include <QTimer>
-#include <QNetworkInterface>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QNetworkAccessManager>
-#include <QNetworkRequest>
+#include <QNetworkInterface>
 #include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QTimer>
+
 
 #include "gui/settings_widget.hpp"
 #include "impl/ext_ip_detectors.hpp"
 
-IpAddressPlugin::IpAddressPlugin(const IpAddressPluginInstanceConfig* cfg)
-  : TextPluginInstanceBase(*cfg)
-  , _cfg(cfg)
-{
-}
+IpAddressPlugin::IpAddressPlugin(const IpAddressPluginInstanceConfig *cfg)
+    : TextPluginInstanceBase(*cfg), _cfg(cfg) {}
 
-void IpAddressPlugin::startup()
-{
+void IpAddressPlugin::startup() {
   _qnam = new QNetworkAccessManager(this);
   _ip_update_timer = new QTimer();
-  connect(_ip_update_timer, &QTimer::timeout, this, &IpAddressPlugin::UpdateIPsList);
+  connect(_ip_update_timer, &QTimer::timeout, this,
+          &IpAddressPlugin::UpdateIPsList);
   _ip_update_timer->setSingleShot(false);
   _ip_update_timer->start(15 * 60 * 1000);
   UpdateIPsList();
   TextPluginInstanceBase::startup();
 }
 
-void IpAddressPlugin::shutdown()
-{
+void IpAddressPlugin::shutdown() {
   TextPluginInstanceBase::shutdown();
   _ip_update_timer->stop();
   _ip_update_timer->deleteLater();
   _qnam->deleteLater();
 }
 
-void IpAddressPlugin::UpdateIPsList()
-{
+void IpAddressPlugin::UpdateIPsList() {
   _last_ip_list.clear();
 
   if (_cfg->getShowInternal()) {
     // get interested internal addresses
     const auto ips = _cfg->getInternalAddresses();
     for (auto iter = ips.begin(); iter != ips.end(); ++iter) {
-      const auto& iname = iter.key();
-      const auto& idxes = iter.value();
+      const auto &iname = iter.key();
+      const auto &idxes = iter.value();
       auto iface = QNetworkInterface::interfaceFromName(iname);
-      if (!iface.isValid()) continue;
+      if (!iface.isValid())
+        continue;
       if (iface.flags() & QNetworkInterface::IsUp) {
         const auto addr_entries = iface.addressEntries();
         for (qsizetype i = 0; i < addr_entries.size(); i++) {
@@ -70,28 +69,34 @@ void IpAddressPlugin::UpdateIPsList()
     requestExternalAddress(true);
   }
 
-  if (_last_ip_list.isEmpty() && !_getting_external_ip4)
+  if (_cfg->getShowLocalIPv4() && !_getting_local_ip) {
+    // get real public IP (bypassing VPN/proxy)
+    requestLocalAddress();
+  }
+
+  if (_last_ip_list.isEmpty() && !_getting_external_ip4 && !_getting_local_ip)
     _last_ip_list.append(tr("<no interfaces selected>"));
 }
 
-void IpAddressPlugin::pluginReloadConfig()
-{
-  if (!_getting_external_ip4 && !_getting_external_ip6)
+void IpAddressPlugin::pluginReloadConfig() {
+  if (!_getting_external_ip4 && !_getting_external_ip6 && !_getting_local_ip)
     UpdateIPsList();
 }
 
-void IpAddressPlugin::requestExternalAddress(bool ipv6)
-{
-  auto getting_external_ip = ipv6 ? &_getting_external_ip6 : &_getting_external_ip4;
-  const auto& detector_service = plugin::ip::ext_ip_detector(_cfg->getExternalIPDetector());
-  const auto& service_url = ipv6 ? detector_service.ipv6 : detector_service.ipv4;
+void IpAddressPlugin::requestExternalAddress(bool ipv6) {
+  auto getting_external_ip =
+      ipv6 ? &_getting_external_ip6 : &_getting_external_ip4;
+  const auto &detector_service =
+      plugin::ip::ext_ip_detector(_cfg->getExternalIPDetector());
+  const auto &service_url =
+      ipv6 ? detector_service.ipv6 : detector_service.ipv4;
 
   const auto external_placeholder = tr("waiting for an external address...");
 
   *getting_external_ip = true;
   _last_ip_list.append(external_placeholder);
-  QNetworkReply* reply = _qnam->get(QNetworkRequest(QUrl(service_url)));
-  connect(reply, &QNetworkReply::finished, this, [=, this] () {
+  QNetworkReply *reply = _qnam->get(QNetworkRequest(QUrl(service_url)));
+  connect(reply, &QNetworkReply::finished, this, [=, this]() {
     *getting_external_ip = false;
     auto i = _last_ip_list.indexOf(external_placeholder);
     Q_ASSERT(i != -1);
@@ -104,23 +109,60 @@ void IpAddressPlugin::requestExternalAddress(bool ipv6)
   });
 }
 
+void IpAddressPlugin::requestLocalAddress() {
+  static const QString local_ip_url =
+      QStringLiteral("https://v4.yinghualuo.cn/bejson");
+  const auto local_placeholder = tr("waiting for local address...");
 
-QString IpAddressPluginFactory::description() const
-{
+  _getting_local_ip = true;
+  _last_ip_list.append(local_placeholder);
+  QNetworkReply *reply = _qnam->get(QNetworkRequest(QUrl(local_ip_url)));
+  connect(reply, &QNetworkReply::finished, this, [=, this]() {
+    _getting_local_ip = false;
+    auto i = _last_ip_list.indexOf(local_placeholder);
+    Q_ASSERT(i != -1);
+    if (reply->error() == QNetworkReply::NoError) {
+      QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+      if (doc.isObject()) {
+        QJsonObject obj = doc.object();
+        QString ip = obj.value("ip").toString();
+        if (_cfg->getShowLocalIPLocation()) {
+          QString location = obj.value("location").toString();
+          if (!location.isEmpty())
+            ip += QStringLiteral(" (") + location + QStringLiteral(")");
+        }
+        _last_ip_list[i] = ip;
+      } else {
+        _last_ip_list[i] = tr("<invalid response>");
+      }
+    } else {
+      _last_ip_list[i] = reply->errorString();
+    }
+    reply->deleteLater();
+    repaintWidget();
+  });
+}
+
+QString IpAddressPluginFactory::description() const {
   return tr("Displays local IP address(es) under clock.");
 }
 
-QVector<QWidget*> IpAddressPluginFactory::configPagesBeforeCommonPages()
-{
+QVector<QWidget *> IpAddressPluginFactory::configPagesBeforeCommonPages() {
   using plugin::ip::SettingsWidget;
   auto page = new SettingsWidget();
-  connect(this, &IpAddressPluginFactory::instanceSwitched, page, [this, page](size_t idx) {
-    page->initControls(qobject_cast<IpAddressPluginInstanceConfig*>(instanceConfig(idx)));
-    if (!hasInstances()) return;
-    disconnect(page, &SettingsWidget::addressesListChanged, nullptr, nullptr);
-    auto inst = qobject_cast<IpAddressPlugin*>(instance(idx));
-    connect(page, &SettingsWidget::addressesListChanged, inst, &IpAddressPlugin::UpdateIPsList);
-    connect(page, &SettingsWidget::extIPDetectorChanged, inst, &IpAddressPlugin::UpdateIPsList);
-  });
-  return { page };
+  connect(this, &IpAddressPluginFactory::instanceSwitched, page,
+          [this, page](size_t idx) {
+            page->initControls(qobject_cast<IpAddressPluginInstanceConfig *>(
+                instanceConfig(idx)));
+            if (!hasInstances())
+              return;
+            disconnect(page, &SettingsWidget::addressesListChanged, nullptr,
+                       nullptr);
+            auto inst = qobject_cast<IpAddressPlugin *>(instance(idx));
+            connect(page, &SettingsWidget::addressesListChanged, inst,
+                    &IpAddressPlugin::UpdateIPsList);
+            connect(page, &SettingsWidget::extIPDetectorChanged, inst,
+                    &IpAddressPlugin::UpdateIPsList);
+          });
+  return {page};
 }

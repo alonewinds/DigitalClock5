@@ -49,6 +49,9 @@ void SettingsWidget::initControls(IpAddressPluginInstanceConfig *icfg) {
       std::clamp(cfg->getExternalIPDetector(), 0, detectors_count()));
   ui->display_inline_cbox->setChecked(cfg->getDisplayInline());
   ui->inline_spacing_spinbox->setValue(cfg->getInlineSpacing());
+
+  ui->show_local_addr_cbox->setChecked(cfg->getShowLocalIPv4());
+  ui->show_local_location_cbox->setChecked(cfg->getShowLocalIPLocation());
 }
 
 void SettingsWidget::onInterfacesListChanged(
@@ -77,6 +80,16 @@ void SettingsWidget::on_show_external_v4_cbox_clicked(bool checked) {
 
 void SettingsWidget::on_show_external_v6_cbox_clicked(bool checked) {
   cfg->setShowExternalIPv6(checked);
+  emit addressesListChanged();
+}
+
+void SettingsWidget::on_show_local_addr_cbox_clicked(bool checked) {
+  cfg->setShowLocalIPv4(checked);
+  emit addressesListChanged();
+}
+
+void SettingsWidget::on_show_local_location_cbox_clicked(bool checked) {
+  cfg->setShowLocalIPLocation(checked);
   emit addressesListChanged();
 }
 

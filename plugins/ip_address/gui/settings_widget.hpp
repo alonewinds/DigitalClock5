@@ -36,6 +36,9 @@ private slots:
   void on_show_external_v4_cbox_clicked(bool checked);
   void on_show_external_v6_cbox_clicked(bool checked);
 
+  void on_show_local_addr_cbox_clicked(bool checked);
+  void on_show_local_location_cbox_clicked(bool checked);
+
   void on_ext_addr_detect_cbox_activated(int index);
 
   void on_display_inline_cbox_clicked(bool checked);

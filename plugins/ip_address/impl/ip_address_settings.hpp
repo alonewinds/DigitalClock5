@@ -21,6 +21,9 @@ public:
   CONFIG_OPTION(ShowExternalIPv6, "show_external_ipv6", bool, false)
   CONFIG_OPTION(ExternalIPDetector, "external_ip_detector", int, 0)
 
+  CONFIG_OPTION(ShowLocalIPv4, "show_local_ipv4", bool, false)
+  CONFIG_OPTION(ShowLocalIPLocation, "show_local_ip_location", bool, false)
+
   CONFIG_OPTION(DisplayInline, "display_inline", bool, false)
   CONFIG_OPTION(InlineSpacing, "inline_spacing", int, 2)
 

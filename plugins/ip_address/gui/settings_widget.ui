@@ -95,7 +95,37 @@
      </item>
     </layout>
    </item>
-   <item row="4" column="0" colspan="4">
+   <item row="4" column="0">
+    <widget class="QCheckBox" name="show_local_addr_cbox">
+     <property name="text">
+      <string>Display local address (real public IP)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <spacer name="horizontalSpacer_3">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>10</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="4" column="2" colspan="2">
+    <widget class="QCheckBox" name="show_local_location_cbox">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string>Show location</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="4">
     <layout class="QHBoxLayout" name="inline_display_layout">
      <item>
       <widget class="QCheckBox" name="display_inline_cbox">
@@ -258,6 +288,22 @@
     <hint type="destinationlabel">
      <x>350</x>
      <y>270</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>show_local_addr_cbox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>show_local_location_cbox</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>100</x>
+     <y>245</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>300</x>
+     <y>245</y>
     </hint>
    </hints>
   </connection>

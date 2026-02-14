@@ -37,6 +37,7 @@ protected:
 
 private:
   void requestExternalAddress(bool ipv6 = false);
+  void requestLocalAddress();
 
 private:
   const IpAddressPluginInstanceConfig *_cfg;
@@ -45,6 +46,7 @@ private:
   QNetworkAccessManager *_qnam = nullptr;
   bool _getting_external_ip4 = false;
   bool _getting_external_ip6 = false;
+  bool _getting_local_ip = false;
 };
 
 class IpAddressPluginFactory : public plugin::text::TextPluginBase {
