@@ -8,6 +8,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
 #include <QtCore/QPluginLoader>
+#include <QtCore/QSet>
 
 #include "config/app_config.hpp"
 #include "core/translation.hpp"
@@ -96,8 +97,9 @@ public:
           if (!_pm->isPluginDisabledForInstance(id(), idx))
             setInstanceActive(inst, idx, true);
         } else {
-          // only stop if it was started (i.e. not disabled)
-          if (!_pm->isPluginDisabledForInstance(id(), idx))
+          // stop ALL running instances regardless of disabled list
+          // use _active_instances to only stop what was actually started
+          if (_active_instances.contains(idx))
             setInstanceActive(inst, idx, false);
         }
       }
@@ -108,6 +110,11 @@ public:
 
   void setInstanceEnabled(size_t idx, bool enabled) {
     if (!_active)
+      return;
+    // guard: skip if already in the desired state
+    if (enabled && _active_instances.contains(idx))
+      return;
+    if (!enabled && !_active_instances.contains(idx))
       return;
     if (auto inst = plugin()->instance(idx))
       setInstanceActive(inst, idx, enabled);
@@ -130,7 +137,7 @@ public:
 
 protected:
   void initPluginAccess(ClockPluginInstance *inst, size_t idx) const;
-  void setInstanceActive(ClockPluginInstance *inst, size_t idx, bool act) const;
+  void setInstanceActive(ClockPluginInstance *inst, size_t idx, bool act);
 
   void onOptionChanged(ClockPluginInstance *inst, opt::InstanceOptions o,
                        const QVariant &v);
@@ -174,6 +181,8 @@ private:
 
   QVariantHash _metadata;
 
+  QSet<size_t> _active_instances;
+
   bool _initialized = false;
   bool _active = false;
 };
@@ -191,14 +200,20 @@ void PluginHandleImpl::initPluginAccess(ClockPluginInstance *inst,
 }
 
 void PluginHandleImpl::setInstanceActive(ClockPluginInstance *inst, size_t idx,
-                                         bool act) const {
+                                         bool act) {
   if (act) {
+    if (_active_instances.contains(idx))
+      return; // already running, skip
     initSettingsPlugin(inst, idx);
     initPluginAccess(inst, idx);
     inst->startup();
+    _active_instances.insert(idx);
   } else {
+    if (!_active_instances.contains(idx))
+      return; // not running, skip
     inst->shutdown();
     deinitSettingsPlugin(inst, idx);
+    _active_instances.remove(idx);
   }
 }
 
